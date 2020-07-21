@@ -4,6 +4,7 @@
 #
 
 set ip $argv[1]
+set mode $argv[2]  # allowed line
 
 if test -z "$ip"
   echo (set_color red)"ERROR: No IP specified"
@@ -15,7 +16,7 @@ set counter 0
 set latency_sum 0
 
 while true
-  set data (ping $argv -c 1 -W 1 | grep "bytes from" | sed -e 's/.*time=//')
+  set data (ping $ip -c 1 -W 1 | grep "bytes from" | sed -e 's/.*time=//')
   set latency (echo $data | awk '{print $1}')
   set latency_sum (math $latency_sum + $latency + 0)
 
@@ -29,8 +30,14 @@ while true
     set output (set_color red)(string repeat -n3 \-)(set_color normal)
   end
   set avg (math $latency_sum/$counter)
-  printf "%s %7.2f (avg) %3d (drop) " $argv $avg $packet_drops 
-  echo $output
+
+  if test (string match 'line' $argv[2])
+    printf "\r\033[K%s %7.2f (avg) %3d (drop) " $ip $avg $packet_drops
+    echo -n $output
+  else
+    printf "%s %7.2f (avg) %3d (drop) " $argv $avg $packet_drops
+    echo $output
+  end
 
   # reduce the ping frequency to 1 sec
   test -n "$data" && sleep 1
