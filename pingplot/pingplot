@@ -1,0 +1,37 @@
+#!//usr/bin/env fish
+#
+# Wraps ping to plot the latency as a horizontal character bar graph 
+#
+
+set ip $argv[1]
+
+if test -z "$ip"
+  echo (set_color red)"ERROR: No IP specified"
+  exit 1
+end
+
+set packet_drops 0
+set counter 0
+set latency_sum 0
+
+while true
+  set data (ping $argv -c 1 -W 1 | grep "bytes from" | sed -e 's/.*time=//')
+  set latency (echo $data | awk '{print $1}')
+  set latency_sum (math $latency_sum + $latency + 0)
+
+  # if data is not empty
+  if test -n "$data"
+    set counter (math $counter + 1)
+    set num (echo $latency | cut -d '.' -f1)
+    set output (set_color green)(string repeat -n$num \|)(set_color normal) $data
+  else
+    set packet_drops (math $packet_drops + 1 )
+    set output (set_color red)(string repeat -n3 \-)(set_color normal)
+  end
+  set avg (math $latency_sum/$counter)
+  printf "%s %7.2f (avg) %3d (drop) " $argv $avg $packet_drops 
+  echo $output
+
+  # reduce the ping frequency to 1 sec
+  test -n "$data" && sleep 1
+end
